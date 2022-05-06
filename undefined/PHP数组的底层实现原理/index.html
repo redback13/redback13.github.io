@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang=zh>
+<html>
 <head>
-    <!-- so meta -->
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="HandheldFriendly" content="True">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
-    <meta name="description" content="基本概念由于PHP的数组基于 HashTable 实现，这里列举一下实现中出现的基本概念。 哈希表是一种通过哈希函数，将特定的键映射到特定值的一种数据结构，它维护键和值之间一一对应关系。  键(key)：用于操作数据的标示，例如PHP数组中的索引，或者字符串键等等。 槽(slot&#x2F;bucket)：哈希表中用于保存数据的一个单元，也就是数据真正存放的容器。 哈希函数(hash functi">
+  <meta charset="utf-8">
+  
+  
+  <title>PHP数组的底层实现原理 | CC的记事簿</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="基本概念由于PHP的数组基于 HashTable 实现，这里列举一下实现中出现的基本概念。 哈希表是一种通过哈希函数，将特定的键映射到特定值的一种数据结构，它维护键和值之间一一对应关系。  键(key)：用于操作数据的标示，例如PHP数组中的索引，或者字符串键等等。 槽(slot&#x2F;bucket)：哈希表中用于保存数据的一个单元，也就是数据真正存放的容器。 哈希函数(hash functi">
 <meta property="og:type" content="article">
 <meta property="og:title" content="PHP数组的底层实现原理">
 <meta property="og:url" content="https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/index.html">
@@ -20,119 +20,85 @@
 <meta property="article:tag" content="PHP">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://github.com/redback13/redback13.github.io/images/php_hashtable.drawio.png">
+  
+    <link rel="alternate" href="/redback13/redback13.github.io/atom.xml" title="CC的记事簿" type="application/atom+xml">
+  
+  
+    <link rel="shortcut icon" href="/redback13/redback13.github.io/favicon.png">
+  
+  
     
-    
-        
-          
-              <link rel="shortcut icon" href="/redback13/redback13.github.io/images/favicon.ico">
-          
-        
-        
-          
-            <link rel="icon" type="image/png" href="/redback13/redback13.github.io/images/favicon-192x192.png" sizes="192x192">
-          
-        
-        
-          
-            <link rel="apple-touch-icon" sizes="180x180" href="/redback13/redback13.github.io/images/apple-touch-icon.png">
-          
-        
-    
-    <!-- title -->
-    <title>PHP数组的底层实现原理</title>
-    <!-- styles -->
-    
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/typeface-source-code-pro@0.0.71/index.min.css">
+
+  
+  
 <link rel="stylesheet" href="/redback13/redback13.github.io/css/style.css">
 
-    <!-- rss -->
+  
     
-    
+<link rel="stylesheet" href="/redback13/redback13.github.io/fancybox/jquery.fancybox.min.css">
+
+  
 <meta name="generator" content="Hexo 6.1.0"></head>
 
 <body>
-    
-      <div id="header-post">
-  <a id="menu-icon" href="#"><i class="fa fa-bars fa-lg"></i></a>
-  <a id="menu-icon-tablet" href="#"><i class="fa fa-bars fa-lg"></i></a>
-  <a id="top-icon-tablet" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa fa-chevron-up fa-lg"></i></a>
-  <span id="menu">
-    <span id="nav">
-      <ul>
-         
-          <li><a href="/redback13/redback13.github.io/">Home</a></li>
-        
-      </ul>
-    </span>
-    <br/>
-    <span id="actions">
-      <ul>
-        
-        
-        <li><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
-        <li><a class="icon" href="#"><i class="fa fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
-      </ul>
-      <span id="i-prev" class="info" style="display:none;">Previous post</span>
-      <span id="i-next" class="info" style="display:none;">Next post</span>
-      <span id="i-top" class="info" style="display:none;">Back to top</span>
-      <span id="i-share" class="info" style="display:none;">Share post</span>
-    </span>
-    <br/>
-    <div id="share" style="display: none">
-      <ul>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/"><i class="fa fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&text=PHP数组的底层实现原理"><i class="fa fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&is_video=false&description=PHP数组的底层实现原理"><i class="fa fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=PHP数组的底层实现原理&body=Check out this article: https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/"><i class="fa fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&name=PHP数组的底层实现原理&description="><i class="fa fa-tumblr " aria-hidden="true"></i></a></li>
-</ul>
-
+  <div id="container">
+    <div id="wrap">
+      <header id="header">
+  <div id="banner"></div>
+  <div id="header-outer" class="outer">
+    <div id="header-title" class="inner">
+      <h1 id="logo-wrap">
+        <a href="/redback13/redback13.github.io/" id="logo">CC的记事簿</a>
+      </h1>
+      
     </div>
-    <div id="toc">
-      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.</span> <span class="toc-text">基本概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.</span> <span class="toc-text">PHP实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#HashTable-%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">HashTable 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Bucket-%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">Bucket 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%E7%BB%93%E6%9E%84%E5%85%B3%E7%B3%BB%E5%A6%82%E4%B8%8B%E5%9B%BE%EF%BC%9A"><span class="toc-number">2.3.</span> <span class="toc-text">总结结构关系如下图：</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E7%82%B9"><span class="toc-number">3.</span> <span class="toc-text">问题点</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%BA%E5%BA%8F%E8%AF%BB%E5%8F%96"><span class="toc-number">3.1.</span> <span class="toc-text">顺序读取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81"><span class="toc-number">3.2.</span> <span class="toc-text">哈希冲突</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81%E7%9A%84%E5%B8%B8%E7%94%A8%E6%96%B9%E6%B3%95%EF%BC%9A"><span class="toc-number">3.2.1.</span> <span class="toc-text">解决哈希冲突的常用方法：</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%93%BE%E6%8E%A5%E6%B3%95%EF%BC%88PHP%E9%87%87%E7%94%A8%E6%AD%A4%E6%96%B9%E6%B3%95%EF%BC%89"><span class="toc-number">3.2.1.1.</span> <span class="toc-text">链接法（PHP采用此方法）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%80%E6%94%BE%E5%AF%BB%E5%9D%80%E6%B3%95"><span class="toc-number">3.2.1.2.</span> <span class="toc-text">开放寻址法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%A9%E5%AE%B9"><span class="toc-number">3.3.</span> <span class="toc-text">扩容</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%97%B6%E6%9C%BA"><span class="toc-number">3.3.1.</span> <span class="toc-text">触发时机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%A9%E5%AE%B9%E6%B5%81%E7%A8%8B"><span class="toc-number">3.3.2.</span> <span class="toc-text">扩容流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Rehash"><span class="toc-number">3.4.</span> <span class="toc-text">Rehash</span></a></li></ol></li></ol>
-    </div>
-  </span>
-</div>
-
-    
-    <div class="content index width mx-auto px2 my4">
+    <div id="header-inner" class="inner">
+      <nav id="main-nav">
+        <a id="main-nav-toggle" class="nav-icon"></a>
         
-        <article class="post" itemscope itemtype="http://schema.org/BlogPosting">
-  <header>
+          <a class="main-nav-link" href="/redback13/redback13.github.io/">Home</a>
+        
+          <a class="main-nav-link" href="/redback13/redback13.github.io/archives">Archives</a>
+        
+      </nav>
+      <nav id="sub-nav">
+        
+          <a id="nav-rss-link" class="nav-icon" href="/redback13/redback13.github.io/atom.xml" title="RSS 订阅"></a>
+        
+        <a id="nav-search-btn" class="nav-icon" title="搜索"></a>
+      </nav>
+      <div id="search-form-wrap">
+        <form action="//google.com/search" method="get" accept-charset="UTF-8" class="search-form"><input type="search" name="q" class="search-form-input" placeholder="搜索"><button type="submit" class="search-form-submit">&#xF002;</button><input type="hidden" name="sitesearch" value="https://github.com/redback13/redback13.github.io"></form>
+      </div>
+    </div>
+  </div>
+</header>
+
+      <div class="outer">
+        <section id="main"><article id="post-PHP数组的底层实现原理" class="h-entry article article-type-post" itemprop="blogPost" itemscope itemtype="https://schema.org/BlogPosting">
+  <div class="article-meta">
+    <a href="/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" class="article-date">
+  <time class="dt-published" datetime="2019-07-05T02:03:24.000Z" itemprop="datePublished">2019-07-05</time>
+</a>
     
-    <h1 class="posttitle" itemprop="name headline">
-        PHP数组的底层实现原理
+  </div>
+  <div class="article-inner">
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="p-name article-title" itemprop="headline name">
+      PHP数组的底层实现原理
     </h1>
-
-
-
-    <div class="meta">
-      <span class="author" itemprop="author" itemscope itemtype="http://schema.org/Person">
-        <span itemprop="name">CC的记事簿</span>
-      </span>
-      
-    <div class="postdate">
-        <time datetime="2019-07-05T02:03:24.000Z" itemprop="datePublished">2019-07-05</time>
-    </div>
-
-
-      
-    <div class="article-tag">
-        <i class="fa fa-tag"></i>
-        <a class="tag-link-link" href="/redback13/redback13.github.io/tags/PHP/" rel="tag">PHP</a>
-    </div>
-
-
-    </div>
-  </header>
   
 
-  <div class="content" itemprop="articleBody">
-    <h1 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h1><p>由于PHP的数组基于 <code>HashTable</code> 实现，这里列举一下实现中出现的基本概念。 哈希表是一种通过哈希函数，将特定的键映射到特定值的一种数据结构，它维护键和值之间一一对应关系。</p>
+      </header>
+    
+    <div class="e-content article-entry" itemprop="articleBody">
+      
+        <h1 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h1><p>由于PHP的数组基于 <code>HashTable</code> 实现，这里列举一下实现中出现的基本概念。 哈希表是一种通过哈希函数，将特定的键映射到特定值的一种数据结构，它维护键和值之间一一对应关系。</p>
 <ul>
 <li>键(key)：用于操作数据的标示，例如PHP数组中的索引，或者字符串键等等。</li>
 <li>槽(slot&#x2F;bucket)：哈希表中用于保存数据的一个单元，也就是数据真正存放的容器。</li>
@@ -182,106 +148,115 @@
 <li>如果未达到阈值，PHP 则会申请一个大小是原数组两倍的新数组（<strong>2mb以内每次扩容翻倍，2mb以上每次扩容增加2mb</strong>），并将旧数组中的数据复制到新数组中，因为数组长度发生了改变，所以 key-value 的映射关系需要重新计算，这个步骤为重建索引。</li>
 </ol>
 <h2 id="Rehash"><a href="#Rehash" class="headerlink" title="Rehash"></a>Rehash</h2>
+      
+    </div>
+    <footer class="article-footer">
+      <a data-url="https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/" data-id="cl2ttytzx0000kt113ssu9hdv" data-title="PHP数组的底层实现原理" class="article-share-link">分享</a>
+      
+      
+      
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/redback13/redback13.github.io/tags/PHP/" rel="tag">PHP</a></li></ul>
+
+    </footer>
   </div>
+  
+    
+  
 </article>
 
 
-
-    </div>
+</section>
+        
+          <aside id="sidebar">
+  
     
-      <div id="footer-post-container">
-  <div id="footer-post">
 
-    <div id="nav-footer" style="display: none">
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签</h3>
+    <div class="widget">
+      <ul class="tag-list" itemprop="keywords"><li class="tag-list-item"><a class="tag-list-link" href="/redback13/redback13.github.io/tags/PHP/" rel="tag">PHP</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">标签云</h3>
+    <div class="widget tagcloud">
+      <a href="/redback13/redback13.github.io/tags/PHP/" style="font-size: 10px;">PHP</a>
+    </div>
+  </div>
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">归档</h3>
+    <div class="widget">
+      <ul class="archive-list"><li class="archive-list-item"><a class="archive-list-link" href="/redback13/redback13.github.io/archives/2019/07/">七月 2019</a></li></ul>
+    </div>
+  </div>
+
+
+  
+    
+  <div class="widget-wrap">
+    <h3 class="widget-title">最新文章</h3>
+    <div class="widget">
       <ul>
-         
-          <li><a href="/redback13/redback13.github.io/">Home</a></li>
+        
+          <li>
+            <a href="/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/">PHP数组的底层实现原理</a>
+          </li>
         
       </ul>
     </div>
-
-    <div id="toc-footer" style="display: none">
-      <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.</span> <span class="toc-text">基本概念</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#PHP%E5%AE%9E%E7%8E%B0"><span class="toc-number">2.</span> <span class="toc-text">PHP实现</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#HashTable-%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">HashTable 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Bucket-%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">Bucket 结构</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%80%BB%E7%BB%93%E7%BB%93%E6%9E%84%E5%85%B3%E7%B3%BB%E5%A6%82%E4%B8%8B%E5%9B%BE%EF%BC%9A"><span class="toc-number">2.3.</span> <span class="toc-text">总结结构关系如下图：</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E9%97%AE%E9%A2%98%E7%82%B9"><span class="toc-number">3.</span> <span class="toc-text">问题点</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E9%A1%BA%E5%BA%8F%E8%AF%BB%E5%8F%96"><span class="toc-number">3.1.</span> <span class="toc-text">顺序读取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81"><span class="toc-number">3.2.</span> <span class="toc-text">哈希冲突</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A3%E5%86%B3%E5%93%88%E5%B8%8C%E5%86%B2%E7%AA%81%E7%9A%84%E5%B8%B8%E7%94%A8%E6%96%B9%E6%B3%95%EF%BC%9A"><span class="toc-number">3.2.1.</span> <span class="toc-text">解决哈希冲突的常用方法：</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#%E9%93%BE%E6%8E%A5%E6%B3%95%EF%BC%88PHP%E9%87%87%E7%94%A8%E6%AD%A4%E6%96%B9%E6%B3%95%EF%BC%89"><span class="toc-number">3.2.1.1.</span> <span class="toc-text">链接法（PHP采用此方法）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#%E5%BC%80%E6%94%BE%E5%AF%BB%E5%9D%80%E6%B3%95"><span class="toc-number">3.2.1.2.</span> <span class="toc-text">开放寻址法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%89%A9%E5%AE%B9"><span class="toc-number">3.3.</span> <span class="toc-text">扩容</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E8%A7%A6%E5%8F%91%E6%97%B6%E6%9C%BA"><span class="toc-number">3.3.1.</span> <span class="toc-text">触发时机</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%89%A9%E5%AE%B9%E6%B5%81%E7%A8%8B"><span class="toc-number">3.3.2.</span> <span class="toc-text">扩容流程</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Rehash"><span class="toc-number">3.4.</span> <span class="toc-text">Rehash</span></a></li></ol></li></ol>
-    </div>
-
-    <div id="share-footer" style="display: none">
-      <ul>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/"><i class="fa fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&text=PHP数组的底层实现原理"><i class="fa fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&is_video=false&description=PHP数组的底层实现原理"><i class="fa fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=PHP数组的底层实现原理&body=Check out this article: https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/"><i class="fa fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&title=PHP数组的底层实现原理"><i class="fa fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://github.com/redback13/redback13.github.io/undefined/PHP%E6%95%B0%E7%BB%84%E7%9A%84%E5%BA%95%E5%B1%82%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86/&name=PHP数组的底层实现原理&description="><i class="fa fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-</ul>
-
-    </div>
-
-    <div id="actions-footer">
-      <ul>
-        <li id="toc"><a class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa fa-list fa-lg" aria-hidden="true"></i> TOC</a></li>
-        <li id="share"><a class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa fa-share-alt fa-lg" aria-hidden="true"></i> Share</a></li>
-        <li id="top" style="display:none"><a class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a></li>
-        <li id="menu"><a class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa fa-bars fa-lg" aria-hidden="true"></i> Menu</a></li>
-      </ul>
-    </div>
-
   </div>
-</div>
 
-    
-    <footer id="footer">
-  <div class="footer-left">
-    Copyright &copy; 2022 CC
-  </div>
-  <div class="footer-right">
-    <nav>
-      <ul>
-         
-          <li><a href="/redback13/redback13.github.io/">Home</a></li>
+  
+</aside>
         
-      </ul>
-    </nav>
+      </div>
+      <footer id="footer">
+  
+  <div class="outer">
+    <div id="footer-info" class="inner">
+      
+      &copy; 2022 CC<br>
+      Powered by <a href="https://hexo.io/" target="_blank">Hexo</a>
+    </div>
   </div>
 </footer>
 
+    </div>
+    <nav id="mobile-nav">
+  
+    <a href="/redback13/redback13.github.io/" class="mobile-nav-link">Home</a>
+  
+    <a href="/redback13/redback13.github.io/archives" class="mobile-nav-link">Archives</a>
+  
+</nav>
+    
+
+
+<script src="/redback13/redback13.github.io/js/jquery-3.4.1.min.js"></script>
+
+
+
+  
+<script src="/redback13/redback13.github.io/fancybox/jquery.fancybox.min.js"></script>
+
+
+
+
+<script src="/redback13/redback13.github.io/js/script.js"></script>
+
+
+
+
+
+  </div>
 </body>
 </html>
-<!-- styles -->
-
-<link rel="stylesheet" href="/redback13/redback13.github.io/lib/font-awesome/css/font-awesome.min.css">
-
-
-<link rel="stylesheet" href="/redback13/redback13.github.io/lib/meslo-LG/styles.css">
-
-
-<link rel="stylesheet" href="/redback13/redback13.github.io/lib/justified-gallery/justifiedGallery.min.css">
-
-
-<!-- jquery -->
-
-<script src="/redback13/redback13.github.io/lib/jquery/jquery.min.js"></script>
-
-
-<script src="/redback13/redback13.github.io/lib/justified-gallery/jquery.justifiedGallery.min.js"></script>
-
-
-<script src="/redback13/redback13.github.io/js/main.js"></script>
-
-
-
-    <!-- Google Analytics -->
-    <script type="text/javascript">
-        (function(i,s,o,g,r,a,m) {i['GoogleAnalyticsObject']=r;i[r]=i[r]||function() {
-        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-        ga('create', 'UA-37473492-6', 'auto');
-        ga('send', 'pageview');
-    </script>
-
-
-
